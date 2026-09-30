@@ -1,0 +1,2 @@
+option('whisper_model', type: 'string', value: '', description: 'Whisper ggml model file')
+option('vad_model', type: 'string', value: '', description: 'Silero VAD ggml model file')
