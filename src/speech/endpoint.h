@@ -28,6 +28,7 @@ struct endpoint {
 	enum phase phase;
 	bool voiced;
 	bool awaiting;
+	bool holding;
 	int windows;
 	int speech;
 	int silence;

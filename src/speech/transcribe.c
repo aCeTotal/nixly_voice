@@ -12,8 +12,9 @@
 #define TASK_TOKENS 3
 #define GOOGLE " Google"
 
+/* Norwegian only for now. */
 static const char *const languages[LANGUAGES] = {
-	"no", "nn", "da", "sv", "fi", "de", "fr", "es", "en",
+	"no",
 };
 
 struct choice {
@@ -87,10 +88,10 @@ static bool append(char *text, const char *piece)
 	return true;
 }
 
-/* Stop once words decide. */
+/* App names may run on. */
 static bool settled(enum intent_kind kind)
 {
-	return kind == INTENT_NONE || intent_launches(kind);
+	return kind == INTENT_NONE || (intent_launches(kind) && kind != INTENT_APP);
 }
 
 static struct prompt task_prompt(const struct transcriber *t, int lang)
@@ -107,7 +108,7 @@ static bool decode(struct transcriber *t, const struct prompt *p, struct heard *
 	whisper_token token;
 
 	strcpy(out->text, p->text);
-	out->intent = intent_parse(out->text);
+	out->intent = intent_parse(t->apps, out->text);
 	for (int i = 0; i < MAX_TOKENS; i++) {
 		const float *logits;
 
@@ -118,7 +119,7 @@ static bool decode(struct transcriber *t, const struct prompt *p, struct heard *
 		token = argmax(logits, t->eot);
 		if (token == t->eot || !append(out->text, whisper_token_to_str(t->ctx, token)))
 			break;
-		out->intent = intent_parse(out->text);
+		out->intent = intent_parse(t->apps, out->text);
 		if (settled(out->intent.kind))
 			break;
 		next = &token;
@@ -138,7 +139,8 @@ static bool guess(struct transcriber *t, const struct choice ranked[LANGUAGES], 
 {
 	struct heard h;
 
-	for (int i = 0; i < HYPOTHESES && (i == 0 || ranked[i].prob >= LANGUAGE_FLOOR); i++) {
+	for (int i = 0; i < HYPOTHESES && i < LANGUAGES &&
+	     (i == 0 || ranked[i].prob >= LANGUAGE_FLOOR); i++) {
 		struct prompt p = task_prompt(t, ranked[i].lang);
 
 		if (!decode(t, &p, &h))
@@ -203,11 +205,12 @@ static bool warm_up(struct transcriber *t)
 	return transcribe_search(t, (struct pcm){ silence, WHISPER_SAMPLE_RATE }, &h);
 }
 
-bool transcriber_open(struct transcriber *t, const char *model)
+bool transcriber_open(struct transcriber *t, const char *model, const struct catalog *apps)
 {
 	struct whisper_context_params params = whisper_context_default_params();
 
 	params.flash_attn = true;
+	t->apps = apps;
 	t->ctx = whisper_init_from_file_with_params_no_state(model, params);
 	if (t->ctx == NULL)
 		return false;

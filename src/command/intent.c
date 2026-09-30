@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "apps/match.h"
 #include "command/fold.h"
 #include "command/lexicon.h"
 
@@ -20,6 +21,18 @@ enum trigger_kind {
 struct trigger {
 	enum trigger_kind kind;
 	const char *rest;
+};
+
+/* Target joined, cut per word. */
+struct target {
+	char text[JOINED_MAX];
+	size_t ends[TARGET_WORDS];
+	int n;
+};
+
+struct found {
+	enum intent_kind kind;
+	bool leading;
 };
 
 struct word {
@@ -102,7 +115,7 @@ static void squeeze(const char *s, char *out)
 }
 
 /* Earliest stem wins. */
-static enum intent_kind target_in(const char *joined)
+static struct found target_in(const char *joined)
 {
 	char text[JOINED_MAX];
 	char stem[FOLD_MAX];
@@ -121,44 +134,74 @@ static enum intent_kind target_in(const char *joined)
 			kind = s->kind;
 		}
 	}
-	return kind;
+	return (struct found){ kind, first == text };
 }
 
 /* Whisper may fuse verb, target. */
 static struct trigger trigger_of(const char *word)
 {
+	char plain[FOLD_MAX];
+	char verb[FOLD_MAX];
+
 	if (listed(search_words, word))
 		return (struct trigger){ TRIGGER_SEARCH, "" };
+	squeeze(word, plain);
 	for (const char *const *o = open_words; *o; o++) {
 		size_t n = strlen(*o);
 
-		if (strncmp(word, *o, n) != 0)
-			continue;
-		if (word[n] == '\0' || target_in(word + n) != INTENT_NONE)
+		squeeze(*o, verb);
+		if (strcmp(plain, verb) == 0)
+			return (struct trigger){ TRIGGER_OPEN, "" };
+		if (strncmp(word, *o, n) == 0 && target_in(word + n).kind != INTENT_NONE)
 			return (struct trigger){ TRIGGER_OPEN, word + n };
 	}
 	return (struct trigger){ TRIGGER_NONE, "" };
 }
 
-static struct intent open_target(const struct words *ws, const char *rest)
+static struct target join(const struct words *ws, const char *rest)
 {
-	char joined[JOINED_MAX];
+	struct target t = { .n = 0 };
 	size_t at = strlen(rest);
 	int last = ws->n < TARGET_WORDS + 1 ? ws->n : TARGET_WORDS + 1;
-	enum intent_kind kind;
 
-	memcpy(joined, rest, at);
+	memcpy(t.text, rest, at);
 	for (int i = 1; i < last; i++) {
 		size_t n = strlen(ws->w[i].folded);
 
-		memcpy(joined + at, ws->w[i].folded, n);
+		memcpy(t.text + at, ws->w[i].folded, n);
 		at += n;
+		t.ends[t.n++] = at;
 	}
-	joined[at] = '\0';
-	kind = target_in(joined);
-	if (kind == INTENT_NONE && ws->n <= TARGET_WORDS)
-		kind = INTENT_OPEN;
-	return (struct intent){ .kind = kind };
+	t.text[at] = '\0';
+	return t;
+}
+
+static struct match target_app(const struct catalog *apps, const struct target *t)
+{
+	struct match best = MATCH_NONE;
+
+	for (int i = 0; i < t->n; i++)
+		best = match_better(best, match_span(apps, t->text, t->ends[i]));
+	return best;
+}
+
+/* Leading builtin word beats apps. */
+static struct intent open_target(const struct catalog *apps, const struct words *ws,
+				 const char *rest)
+{
+	struct target t = join(ws, rest);
+	struct found builtin = target_in(t.text);
+	struct match app;
+
+	if (builtin.leading)
+		return (struct intent){ .kind = builtin.kind };
+	app = target_app(apps, &t);
+	if (app.app >= 0)
+		return (struct intent){ .kind = app.open ? INTENT_APP_PREFIX : INTENT_APP,
+					.app = app.app };
+	if (builtin.kind != INTENT_NONE)
+		return (struct intent){ .kind = builtin.kind };
+	return (struct intent){ .kind = ws->n <= TARGET_WORDS ? INTENT_OPEN : INTENT_NONE };
 }
 
 /* Query is words after trigger. */
@@ -184,7 +227,7 @@ static struct intent search(const struct words *ws)
 	return in;
 }
 
-struct intent intent_parse(const char *text)
+struct intent intent_parse(const struct catalog *apps, const char *text)
 {
 	struct words ws;
 	struct trigger t;
@@ -196,6 +239,6 @@ struct intent intent_parse(const char *text)
 	if (t.kind == TRIGGER_SEARCH)
 		return search(&ws);
 	if (t.kind == TRIGGER_OPEN)
-		return open_target(&ws, t.rest);
+		return open_target(apps, &ws, t.rest);
 	return (struct intent){ .kind = ws.n > 1 ? INTENT_NONE : INTENT_UNSURE };
 }

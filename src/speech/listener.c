@@ -34,7 +34,9 @@ bool listener_open(struct listener *l, const char *whisper_model, const char *va
 	/* Init leaves LSTM state uninitialized. */
 	whisper_vad_reset_state(l->vad);
 	l->chatty = isatty(STDERR_FILENO);
-	return transcriber_open(&l->transcriber, whisper_model);
+	dirs_launcher(&l->apps.dirs);
+	catalog_refresh(&l->apps);
+	return transcriber_open(&l->transcriber, whisper_model, &l->apps);
 }
 
 static bool collecting(const struct listener *l)
@@ -81,6 +83,8 @@ static bool probe(struct listener *l, struct intent *out)
 	if (!hear(l, transcribe, &h))
 		return false;
 	*out = h.intent;
+	if (h.intent.kind == INTENT_APP_PREFIX)
+		l->held = h.intent;
 	return intent_launches(h.intent.kind);
 }
 
@@ -89,13 +93,15 @@ static void refresh(struct listener *l)
 	struct heard h;
 
 	if (hear(l, transcribe_search, &h))
-		l->search = h.intent;
+		l->held = h.intent;
 }
 
 static bool commit(const struct listener *l, struct intent *out)
 {
-	*out = l->search;
-	return out->kind == INTENT_SEARCH && out->query[0] != '\0';
+	*out = l->held;
+	if (out->kind == INTENT_APP_PREFIX)
+		out->kind = INTENT_APP;
+	return out->kind == INTENT_APP || (out->kind == INTENT_SEARCH && out->query[0] != '\0');
 }
 
 /* Muted mics skip inference. */
@@ -123,7 +129,9 @@ bool listener_window(struct listener *l, const float *window, struct intent *out
 	switch (endpoint_push(&l->endpoint, prob)) {
 	case STEP_BEGIN:
 		l->start = l->len > PREROLL + VAD_WINDOW ? l->len - PREROLL - VAD_WINDOW : 0;
-		l->search.kind = INTENT_NONE;
+		l->held.kind = INTENT_NONE;
+		/* New installs show up here. */
+		catalog_refresh(&l->apps);
 		return false;
 	case STEP_PROBE:
 		return probe(l, out);

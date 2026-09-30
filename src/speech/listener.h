@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "apps/catalog.h"
 #include "command/intent.h"
 #include "speech/endpoint.h"
 #include "speech/transcribe.h"
@@ -15,8 +16,10 @@
 struct listener {
 	struct endpoint endpoint;
 	struct transcriber transcriber;
+	struct catalog apps;
 	struct whisper_vad_context *vad;
-	struct intent search;
+	/* Fires once the pause settles. */
+	struct intent held;
 	bool chatty;
 	int len;
 	int start;

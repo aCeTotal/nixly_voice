@@ -11,7 +11,11 @@ endif
 src_dir = include_directories('.')
 
 command_lib = static_library('command',
-  files('command/fold.c', 'command/intent.c', 'command/lexicon.c'),
+  files(
+    'apps/catalog.c', 'apps/desktop.c', 'apps/dirs.c', 'apps/keys.c', 'apps/match.c',
+    'apps/numeral.c', 'apps/phonetic.c',
+    'command/fold.c', 'command/intent.c', 'command/lexicon.c',
+  ),
   include_directories: src_dir,
 )
 

@@ -112,6 +112,34 @@ static void open_waits_for_its_target(void)
 	EXPECT(e.phase, PHASE_DONE);
 }
 
+static void app_prefix_fires_after_a_pause(void)
+{
+	struct endpoint e = { 0 };
+
+	speak(&e);
+	hear(&e, INTENT_APP_PREFIX, "");
+	run(&e, HUSH, 6);
+	EXPECT(endpoint_push(&e, HUSH), STEP_COMMIT);
+	EXPECT(e.phase, PHASE_DONE);
+	run(&e, HUSH, 4);
+	EXPECT(e.phase, PHASE_IDLE);
+}
+
+static void app_prefix_yields_to_more_speech(void)
+{
+	struct endpoint e = { 0 };
+
+	speak(&e);
+	hear(&e, INTENT_APP_PREFIX, "");
+	run(&e, HUSH, 3);
+	run(&e, VOICE, 4);
+	EXPECT(endpoint_push(&e, HUSH), STEP_PROBE);
+	hear(&e, INTENT_APP, "");
+	EXPECT(e.phase, PHASE_DONE);
+	run(&e, HUSH, 11);
+	EXPECT(e.phase, PHASE_IDLE);
+}
+
 static void unsure_word_does_not_wait(void)
 {
 	struct endpoint e = { 0 };
@@ -165,6 +193,8 @@ int main(void)
 	search_commits_after_the_pause();
 	search_waits_for_its_query();
 	open_waits_for_its_target();
+	app_prefix_fires_after_a_pause();
+	app_prefix_yields_to_more_speech();
 	unsure_word_does_not_wait();
 	fluent_speech_is_probed();
 	long_search_is_cut();

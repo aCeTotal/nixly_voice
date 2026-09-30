@@ -7,7 +7,7 @@
 
 #include "command/intent.h"
 
-#define LANGUAGES 9
+#define LANGUAGES 1
 #define TEXT_MAX QUERY_MAX
 #define PREFIX_MAX 4
 
@@ -23,6 +23,7 @@ struct heard {
 };
 
 struct transcriber {
+	const struct catalog *apps;
 	struct whisper_context *ctx;
 	struct whisper_state *state;
 	int n_vocab;
@@ -36,7 +37,7 @@ struct transcriber {
 	int n_google;
 };
 
-bool transcriber_open(struct transcriber *t, const char *model);
+bool transcriber_open(struct transcriber *t, const char *model, const struct catalog *apps);
 bool transcribe(struct transcriber *t, struct pcm audio, struct heard *out);
 /* Decodes after a forced Google. */
 bool transcribe_search(struct transcriber *t, struct pcm audio, struct heard *out);

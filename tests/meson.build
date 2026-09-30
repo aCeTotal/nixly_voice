@@ -12,3 +12,10 @@ test('endpoint',
     dependencies: whisper_dep,
   ),
 )
+
+test('apps',
+  executable('apps_test', files('apps_test.c'),
+    include_directories: src_dir,
+    link_with: command_lib,
+  ),
+)

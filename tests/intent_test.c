@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "apps/catalog.h"
 #include "command/intent.h"
 
 struct case_ {
@@ -9,9 +10,17 @@ struct case_ {
 	const char *query;
 };
 
+static struct catalog none;
+
 static const struct case_ cases[] = {
 	{ "Åpne hjemmemappet.", INTENT_HOME, "" },
+	{ "Åpne hjem.", INTENT_HOME, "" },
+	{ "Åpne home", INTENT_HOME, "" },
+	{ "Åpne hjemmeområdet", INTENT_HOME, "" },
 	{ "Åpne kalkulator.", INTENT_CALCULATOR, "" },
+	{ "Oppne kalkulator", INTENT_CALCULATOR, "" },
+	{ "Start kalkulator.", INTENT_CALCULATOR, "" },
+	{ "Start nettleseren", INTENT_BROWSER, "" },
 	{ "Åpne nettleser.", INTENT_BROWSER, "" },
 	{ "Åpne Nixly Kalk", INTENT_CALCULATOR, "" },
 	{ "Opne nettlesaren", INTENT_BROWSER, "" },
@@ -59,6 +68,8 @@ static const struct case_ cases[] = {
 	{ "Kan du åpne døra for meg?", INTENT_NONE, "" },
 	{ "Åpne døra for meg nå", INTENT_NONE, "" },
 	{ "Åpnet kalkulatoren i går", INTENT_NONE, "" },
+	{ "Startet kalkulatoren i går", INTENT_NONE, "" },
+	{ "Start med å rydde", INTENT_OPEN, "" },
 	{ "I will google it later.", INTENT_NONE, "" },
 	{ "Lo buscaré en Google más tarde.", INTENT_NONE, "" },
 	{ "Openly speaking", INTENT_NONE, "" },
@@ -76,7 +87,7 @@ int main(void)
 	int failed = 0;
 
 	for (size_t i = 0; i < sizeof cases / sizeof *cases; i++) {
-		struct intent in = intent_parse(cases[i].text);
+		struct intent in = intent_parse(&none, cases[i].text);
 
 		if (in.kind == cases[i].kind && strcmp(in.query, cases[i].query) == 0)
 			continue;

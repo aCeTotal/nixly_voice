@@ -4,7 +4,7 @@
 
 /* Folded: lowercase, accents stripped. */
 const char *const open_words[] = {
-	"apne", "opne", "apen",
+	"apne", "opne", "apen", "start",
 	"abn", "aben", "abne",
 	"oppna",
 	"avaa", "avatkaa",
@@ -22,17 +22,13 @@ const char *const search_words[] = {
 
 /* Found inside joined, squeezed words. */
 const struct stem stems[] = {
-	{ "hjemmemap", INTENT_HOME },
-	{ "hjemmekatalog", INTENT_HOME },
-	{ "hjemkatalog", INTENT_HOME },
-	{ "hjemmeomrad", INTENT_HOME },
+	{ "hjem", INTENT_HOME },
+	{ "home", INTENT_HOME },
 	{ "hemmapp", INTENT_HOME },
 	{ "hemkatalog", INTENT_HOME },
 	{ "kotikansi", INTENT_HOME },
 	{ "kotihakemisto", INTENT_HOME },
-	{ "homeordner", INTENT_HOME },
 	{ "heimordner", INTENT_HOME },
-	{ "homeverzeichnis", INTENT_HOME },
 	{ "heimverzeichnis", INTENT_HOME },
 	{ "benutzerordner", INTENT_HOME },
 	{ "personlich", INTENT_HOME },
@@ -43,8 +39,6 @@ const struct stem stems[] = {
 	{ "carpetadeinicio", INTENT_HOME },
 	{ "carpetadeusuario", INTENT_HOME },
 	{ "directoriopersonal", INTENT_HOME },
-	{ "homefolder", INTENT_HOME },
-	{ "homedir", INTENT_HOME },
 
 	{ "kalk", INTENT_CALCULATOR },
 	{ "calc", INTENT_CALCULATOR },

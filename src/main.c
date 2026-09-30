@@ -18,9 +18,11 @@ static void emit(const struct intent *in)
 		[INTENT_HOME] = "open home",
 		[INTENT_CALCULATOR] = "open calculator",
 		[INTENT_BROWSER] = "open browser",
+		[INTENT_APP] = "launch ",
 	};
+	const char *arg = in->kind == INTENT_APP ? catalog_path(&listener.apps, in->app) : in->query;
 
-	dprintf(STDOUT_FILENO, "%s%s\n", lines[in->kind], in->query);
+	dprintf(STDOUT_FILENO, "%s%s\n", lines[in->kind], arg);
 }
 
 static void drain(void)
