@@ -150,14 +150,30 @@ static void unsure_word_does_not_wait(void)
 	EXPECT(e.phase, PHASE_IDLE);
 }
 
+static void early_mishearing_keeps_listening(void)
+{
+	struct endpoint e = { 0 };
+
+	speak(&e);
+	hear(&e, INTENT_NONE, "");
+	EXPECT(e.phase, PHASE_LISTEN);
+	run(&e, VOICE, 14);
+	EXPECT(endpoint_push(&e, VOICE), STEP_PROBE);
+	hear(&e, INTENT_CALCULATOR, "");
+	EXPECT(e.phase, PHASE_DONE);
+}
+
 static void fluent_speech_is_probed(void)
 {
 	struct endpoint e = { 0 };
 
 	EXPECT(endpoint_push(&e, VOICE), STEP_BEGIN);
 	run(&e, VOICE, 13);
-	EXPECT(endpoint_push(&e, VOICE), STEP_PROBE);
-	hear(&e, INTENT_NONE, "");
+	for (int i = 0; i < 3; i++) {
+		EXPECT(endpoint_push(&e, VOICE), STEP_PROBE);
+		hear(&e, INTENT_NONE, "");
+		run(&e, VOICE, 14);
+	}
 	run(&e, VOICE, 100);
 	EXPECT(e.phase, PHASE_DONE);
 }
@@ -196,6 +212,7 @@ int main(void)
 	app_prefix_fires_after_a_pause();
 	app_prefix_yields_to_more_speech();
 	unsure_word_does_not_wait();
+	early_mishearing_keeps_listening();
 	fluent_speech_is_probed();
 	long_search_is_cut();
 	hysteresis_holds_speech();

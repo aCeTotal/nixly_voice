@@ -6,6 +6,7 @@
 #include "apps/catalog.h"
 #include "command/intent.h"
 #include "speech/endpoint.h"
+#include "speech/presence.h"
 #include "speech/transcribe.h"
 
 /* Silero's window at 16 kHz. */
@@ -18,6 +19,7 @@ struct listener {
 	struct transcriber transcriber;
 	struct catalog apps;
 	struct whisper_vad_context *vad;
+	struct presence presence;
 	/* Fires once the pause settles. */
 	struct intent held;
 	bool chatty;

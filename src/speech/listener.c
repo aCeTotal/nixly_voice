@@ -1,5 +1,6 @@
 #include "speech/listener.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -33,6 +34,7 @@ bool listener_open(struct listener *l, const char *whisper_model, const char *va
 		return false;
 	/* Init leaves LSTM state uninitialized. */
 	whisper_vad_reset_state(l->vad);
+	presence_init(&l->presence, WHISPER_SAMPLE_RATE);
 	l->chatty = isatty(STDERR_FILENO);
 	dirs_launcher(&l->apps.dirs);
 	catalog_refresh(&l->apps);
@@ -114,11 +116,17 @@ static bool silent(const float *window)
 	return energy < VAD_WINDOW * SILENCE_POWER;
 }
 
+/* Band catches what Silero misses. */
 static float speech_prob(struct listener *l, const float *window)
 {
-	if (silent(window) || !whisper_vad_detect_speech_no_reset(l->vad, window, VAD_WINDOW))
+	float band;
+
+	if (silent(window))
 		return 0.0f;
-	return whisper_vad_probs(l->vad)[0];
+	band = presence_prob(&l->presence, window, VAD_WINDOW);
+	if (!whisper_vad_detect_speech_no_reset(l->vad, window, VAD_WINDOW))
+		return band;
+	return fmaxf(band, whisper_vad_probs(l->vad)[0]);
 }
 
 bool listener_window(struct listener *l, const float *window, struct intent *out)

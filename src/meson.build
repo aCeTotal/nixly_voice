@@ -20,7 +20,7 @@ command_lib = static_library('command',
 )
 
 speech_lib = static_library('speech',
-  files('speech/endpoint.c', 'speech/listener.c', 'speech/transcribe.c'),
+  files('speech/endpoint.c', 'speech/listener.c', 'speech/presence.c', 'speech/transcribe.c'),
   include_directories: src_dir,
   link_with: command_lib,
   dependencies: [whisper_dep, math_dep],

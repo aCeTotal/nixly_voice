@@ -9,6 +9,8 @@
 #define HOLD_GAP 8
 #define SEARCH_TAIL 3
 #define MIN_SPEECH 6
+/* Short fragments mishear whispers. */
+#define SETTLE_SPEECH 31
 #define PROBE_EVERY 15
 
 static enum step begin(struct endpoint *e)
@@ -85,7 +87,7 @@ enum step endpoint_push(struct endpoint *e, float prob)
 	return STEP_PROBE;
 }
 
-void endpoint_heard(struct endpoint *e, const struct intent *in)
+static enum phase after(const struct endpoint *e, enum intent_kind kind)
 {
 	static const enum phase next[] = {
 		[INTENT_NONE] = PHASE_DONE,
@@ -99,11 +101,18 @@ void endpoint_heard(struct endpoint *e, const struct intent *in)
 		[INTENT_APP] = PHASE_DONE,
 	};
 
+	if (kind == INTENT_NONE && e->speech < SETTLE_SPEECH)
+		return PHASE_LISTEN;
+	return next[kind];
+}
+
+void endpoint_heard(struct endpoint *e, const struct intent *in)
+{
 	/* Probes are not search decodes. */
 	if (e->phase == PHASE_LISTEN && in->kind == INTENT_SEARCH)
 		e->fresh = 1;
 	if (e->phase == PHASE_LISTEN)
-		e->phase = next[in->kind];
+		e->phase = after(e, in->kind);
 	e->holding = e->phase == PHASE_LISTEN && in->kind == INTENT_APP_PREFIX;
 	e->awaiting = e->phase != PHASE_DONE && intent_awaits(in);
 }
